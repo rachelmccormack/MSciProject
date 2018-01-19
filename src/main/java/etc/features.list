@@ -1,0 +1,10 @@
+#BM25 calculated on each field.
+WMODEL:SingleFieldModel(BM25,0)
+WMODEL:SingleFieldModel(BM25,1)
+#title and body length features (Dl means length)
+QI:SingleFieldModel(Dl,0)
+QI:SingleFieldModel(Dl,1)
+#proximity features
+DSM:org.terrier.matching.dsms.DFRDependenceScoreModifier
+DSM:org.terrier.matching.dsms.MRFDependenceScoreModifier
+
