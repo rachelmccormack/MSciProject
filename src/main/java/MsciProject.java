@@ -378,6 +378,44 @@ public class MsciProject {
     }
 
 
+    public static void offsetGraph(double[] initscore, int runs, int oppositeDoc, int doc, double startFeature){
+        double startScore = initscore[doc];
+        System.out.print(Arrays.toString(initscore));
+        boolean lower = true; //The "doc" score is lower than the "opposite doc" score initially
+        double boundary = initscore[oppositeDoc];
+        if (boundary < startScore){ //doc score is higher than the "opposite doc" score initially
+            lower = false;
+        }
+
+
+        for (Map.Entry<Double, Double> entry : results.entrySet()) {
+            double difference = entry.getKey() - startFeature ;
+            System.out.println(startScore);
+            System.out.println(entry.getKey());
+            if (lower == true) {
+                if (entry.getValue() > boundary) {
+                    offset.put(difference, "t");
+
+                } else {
+                    offset.put(difference, "f");
+
+                }
+            }
+            else{
+                System.out.println("Boundary:" + boundary + "value:" +entry.getValue());
+                if (entry.getValue()<boundary) {
+                    offset.put(difference, "t");
+
+                } else {
+                    offset.put(difference, "f");
+
+                }
+            }
+
+
+        }
+        System.out.println((offset));
+    }
     public static void start(String name) throws Exception {
        /* Scanner reader = new Scanner(System.in);  // Reading from System.in
         System.out.println("Which document would you like to alter? (0 or 1): ");
@@ -392,19 +430,25 @@ public class MsciProject {
             int runs = reader.nextInt();
 
         reader.close();*/
-        int doc = 0;
-        int feat = 45;
+        int doc = 1;
+        int feat = 24;
         int runs = 100;
+        int oppositeDoc = 0;
+        if (doc == 0){
+            oppositeDoc = 1;
+        }
 
         load("testvectors.txt");
         //CombinedLETORFeatureLoader("/home/rachel/Desktop/IR/Test/src/main/java/testvectors.txt");
         loadModel("ensemble.txt");
+        double startFeature = getFeatures()[0][doc][feat];
         double[] outscore = {0, 0};
         applyModel(2, 64, getFeatures()[0], outscore);
 
 
         File output = new File("results/results_" + name + ".txt");
         String init = ("Initial results: " + Arrays.toString(outscore));
+        double[] initscore = outscore;
 
 
         //change this ten times.
@@ -434,6 +478,8 @@ public class MsciProject {
 
             System.out.println(getFeatures()[0][doc][feat]);
             applyModel(2, 64, getFeatures()[0], outscore);
+
+            threshold.put(getFeatures()[0][doc][feat], outscore[oppositeDoc]);
             results.put(getFeatures()[0][doc][feat], outscore[doc]);
 
 
@@ -449,6 +495,7 @@ public class MsciProject {
         writer1.close();
         JFreeChart chart = test("x vs y",
                 "Example Plot", name);
+        offsetGraph(initscore,runs, oppositeDoc, doc, startFeature);
 
 
 
@@ -457,6 +504,9 @@ public class MsciProject {
 
 
     public static Map<Double, Double> results = new HashMap<Double, Double>();
+    public static Map<Double, Double> threshold = new HashMap<Double, Double>();
+    public static Map<Double, String> offset = new HashMap<Double, String>();
+
 
     private static XYDataset createXYDataset() throws FileNotFoundException {
         XYSeriesCollection dataset = new XYSeriesCollection();
@@ -469,7 +519,14 @@ public class MsciProject {
 
 
         dataset.addSeries(series1);
+        XYSeries series2 = new XYSeries("threshold ");
+        for (Map.Entry<Double, Double> entry1 : threshold.entrySet()) {
+            series2.add(entry1.getKey(), entry1.getValue());
 
+        }
+
+
+        dataset.addSeries(series2);
 
         return dataset;
     }
