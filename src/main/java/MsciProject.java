@@ -392,22 +392,23 @@ public class MsciProject {
             double difference = entry.getKey() - startFeature ;
             System.out.println(startScore);
             System.out.println(entry.getKey());
+            Double[] input  = {difference, entry.getKey()};
             if (lower == true) {
                 if (entry.getValue() > boundary) {
-                    offset.put(difference, "t");
+                    offset.put(input, "t");
 
                 } else {
-                    offset.put(difference, "f");
+                    offset.put(input, "f");
 
                 }
             }
             else{
                 System.out.println("Boundary:" + boundary + "value:" +entry.getValue());
                 if (entry.getValue()<boundary) {
-                    offset.put(difference, "t");
+                    offset.put(input, "t");
 
                 } else {
-                    offset.put(difference, "f");
+                    offset.put(input, "f");
 
                 }
             }
@@ -496,7 +497,7 @@ public class MsciProject {
         JFreeChart chart = test("x vs y",
                 "Example Plot", name);
         offsetGraph(initscore,runs, oppositeDoc, doc, startFeature);
-
+        JFreeChart chart2 = offsetChart(name);
 
 
 
@@ -505,7 +506,7 @@ public class MsciProject {
 
     public static Map<Double, Double> results = new HashMap<Double, Double>();
     public static Map<Double, Double> threshold = new HashMap<Double, Double>();
-    public static Map<Double, String> offset = new HashMap<Double, String>();
+    public static Map<Double[], String> offset = new HashMap<Double[], String>();
 
 
     private static XYDataset createXYDataset() throws FileNotFoundException {
@@ -555,6 +556,52 @@ public class MsciProject {
         fout.close();
 
         return chart;
+
+    }
+
+    public static JFreeChart offsetChart(String name)throws IOException{
+        System.out.println("In");
+        XYDataset dataset1 = offsetDataset();
+
+        // Create chart
+        JFreeChart chart1 = ChartFactory.createScatterPlot(
+                "Addition to original feature to create a change",
+                "X-Axis", "Y-Axis", dataset1);
+
+
+        //Changes background color
+        XYPlot plot = (XYPlot) chart1.getPlot();
+        plot.setBackgroundPaint(new Color(255, 228, 196));
+
+
+        ChartPanel chartPanel = new ChartPanel(chart1);
+        chartPanel.setPreferredSize(new java.awt.Dimension(560, 367));
+
+        File image = new File("offset/chart" + name + ".png");
+        FileOutputStream fileout = new FileOutputStream(image);
+        ChartUtilities.writeChartAsPNG(fileout, chart1, 600, 400);
+        fileout.close();
+
+        return chart1;
+    }
+
+    private static XYDataset offsetDataset( ) {
+        XYSeriesCollection dataset = new XYSeriesCollection();
+        XYSeries series1 = new XYSeries("change ");
+        XYSeries series2 = new XYSeries("no change ");
+
+        for (Map.Entry<Double[], String> e : offset.entrySet()) {
+            if (e.getValue() == "f") {
+                series2.add(e.getKey()[0], (Double)1.0);
+            } else {
+                series1.add(e.getKey()[0], (Double)1.0);
+
+            }
+        }
+        dataset.addSeries(series1);
+        dataset.addSeries(series2);
+
+        return dataset;
 
     }
 
