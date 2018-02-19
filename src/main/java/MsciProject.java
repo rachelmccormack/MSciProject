@@ -393,24 +393,37 @@ public class MsciProject {
     }
 
 
-    public static void offsetGraph(double[] initscore, int runs, int oppositeDoc, int doc, double startFeature){
+    public static void offsetGraph(double[] initscore, int runs, int oppositeDoc, int doc, double startFeature, int feat) throws IOException, FileNotFoundException{
+       // System.out.println("OFFSET");
         double startScore = initscore[doc];
         boolean lower = true; //The "doc" score is lower than the "opposite doc" score initially
         double boundary = initscore[oppositeDoc];
+        Boolean wr = false;
+        int changes = 0;
         if (boundary < startScore){ //doc score is higher than the "opposite doc" score initially
             lower = false;
         }
 
-
+        double smallest = 9.9;
+        boolean neg = false;
         for (Map.Entry<Double, Double> entry : results.entrySet()) {
-            System.out.println("!: " + entry.getKey() + " !: " + startFeature );
+           // System.out.println("!: " + entry.getKey() + " !: " + startFeature );
             double difference = entry.getKey() - startFeature ;
+            double d;
 
             Double[] input  = {difference, entry.getKey()};
-            System.out.println(difference);
+            if (difference< 0){
+                d = difference *-1;
+                neg = true;
+            }
+            else {d = difference;}
+           // System.out.println(difference);
             if (lower) {
                 if (entry.getValue() > boundary) {
-                    System.out.println("dif l " + difference);
+                    if (d < smallest){ smallest = d;}
+                    changes++;
+                    wr = true;
+                   // System.out.println("dif l " + difference);
                     offset.put(input, "t");
 
                 } else {
@@ -420,7 +433,10 @@ public class MsciProject {
             }
             else{
                 if (entry.getValue()<boundary) {
-                    System.out.println("dif g " + input[0]);
+                    if (d < smallest){ smallest = d;}
+                    changes++;
+                    wr = true;
+                 //   System.out.println("dif g " + input[0]);
                     offset.put(input, "t");
 
                 } else {
@@ -434,10 +450,17 @@ public class MsciProject {
 
         }
         String val;
-        System.out.println("                    " + offset.size());
+
+
+       // System.out.println("                    " + offset.size());
         for (Map.Entry<Double[], String> entry : offset.entrySet()) {
             if (entry.getValue() == "t") {
-                System.out.println(entry.getKey()[0]);
+
+
+                String filename = "changes" +doc + feat +".txt";
+                File f = new File(filename);
+                PrintWriter c = new PrintWriter(new FileWriter(f, true));
+               // System.out.println(entry.getKey()[0]);
                 DecimalFormat df = new DecimalFormat("#.#");
                 val = df.format(entry.getKey()[0]);
 
@@ -446,7 +469,7 @@ public class MsciProject {
                 }
 
                 if (val.equalsIgnoreCase("0")){
-                    System.out.println("o");
+                //    System.out.println("o");
                     val = "0.0";
                 }
                 if (val.equalsIgnoreCase("-1")) {
@@ -456,18 +479,32 @@ public class MsciProject {
                 if (val.equalsIgnoreCase("1")){
                     val = "1.0";
                 }
-                System.out.println(val);
+              //  System.out.println(val);
 
-                System.out.println(val=="0");
+               // System.out.println(val=="0");
                 offsetNos.put(val, offsetNos.get(val) + 1);
-                System.out.println("VAL" + offsetNos.get(val));
+                //System.out.println("VAL" + offsetNos.get(val));
+                c.write(val + "\n");
+                c.close();
+
 
 
             }
+
+
         }
+
         offset.clear();
         results.clear();
         threshold.clear();
+        if (wr == true){
+            if (neg == true){
+                smallest = smallest*-1;
+            }
+            changeresults.put(feat, doc +"," + feat+ "," +smallest + "," + changes );
+
+        }
+
 
     }
 
@@ -486,7 +523,6 @@ public class MsciProject {
 
         reader.close();*/
         int doc = 0;
-        int feat = 53;
         int runs = 200;
        // int nodocpairs = 8;
         int oppositeDoc = 0;
@@ -494,98 +530,144 @@ public class MsciProject {
             oppositeDoc = 1;
         }
         int lineno = 0;
-        File file = new File("vectors.txt");
-        BufferedReader reader = new BufferedReader(new FileReader(file));
-
-        String line;
         int docsno = 0;
-        String out = "";
-
-        while ((line = reader.readLine()) != null) {
-
-            if (lineno< 2){
-                out = out + line + "\n";
-            }
-            else{
-                File output1 = new File("temp/0vectors" + docsno + ".txt");
-                PrintWriter writer = new PrintWriter(output1);
-                writer.write(out);
-                writer.close();
-                lineno = 0;
-                docsno++;
-                out = "";
-                out = out + line + "\n";
-
-            }
-            lineno++;
-
-        }
-        for(int x = 0; x < 7; x++) {
-            load("temp/0vectors" + x + ".txt");
-            //CombinedLETORFeatureLoader("/home/rachel/Desktop/IR/Test/src/main/java/testvectors.txt");
-            loadModel("ensemble.txt");
-            // for (int dn  = 0; dn < nodocpairs+1; dn++)
-            System.out.println(Arrays.deepToString(getFeatures()));
-            double startFeature = getFeatures()[0][doc][feat];
-            double[] outscore = {0, 0};
-            applyModel(2, 64, getFeatures()[0], outscore);
 
 
-            File output = new File("results/results_" + name + ".txt");
-            String init = ("Initial results: " + Arrays.toString(outscore));
-            double[] initscore = outscore;
+            File file = new File("vectors.txt");
+            BufferedReader reader = new BufferedReader(new FileReader(file));
 
+            String line;
+            String out = "";
 
-            //change this ten times.
-            for (int times = 0; times < runs; times++) {
-                outscore[0] = 0;
-                outscore[0] = 0;
-                outscore[1] = 0;
-                double replacement = gaussian(getFeatures()[0][doc][feat]);
-                replacement = (double) Math.round(replacement * 1000000d) / 1000000d;
-                //replacement = .805588;
-                getFeatures()[0][doc][feat] = replacement;
+            while ((line = reader.readLine()) != null) {
 
-                String fileName = "temp/test" + times + ".txt";
-                PrintWriter writer = new PrintWriter(fileName);
-                String firstLine = "";
-                for (int a = 1; a < getFeatures()[0][0].length + 1; a++) {
-                    firstLine = firstLine + a + ":" + getFeatures()[0][0][a - 1] + " ";
+                if (lineno < 2) {
+                    out = out + line + "\n";
+                } else {
+                   // System.out.println("in");
+                    File output1 = new File("temp/0vectors" + docsno + ".txt");
+                    PrintWriter writer = new PrintWriter(output1);
+                    writer.write(out);
+                    writer.close();
+                    lineno = 0;
+                    docsno++;
+                    out = "";
+                    out = out + line + "\n";
+
                 }
-                String secondLine = "";
-                for (int a = 1; a < getFeatures()[0][1].length + 1; a++) {
-                    secondLine = secondLine + a + ":" + getFeatures()[0][1][a - 1] + " ";
-                    System.out.println("                    !!!!!!");
+                lineno++;
+
+
+            }
+            reader.close();
+        String initname = name;
+        for (int feat = 0; feat < 64; feat++) {
+            name = initname + feat;
+            for (int x = 0; x < 7; x++) {
+                if (feat > 0) {
+                    x = x + 1;
                 }
-                writer.write("1 qid:10 " + firstLine + "#docid = G00-00-1000000\n");
-                writer.write("0 qid:10 " + secondLine + "#docid = G00-00-0000001");
-                writer.close();
+                load("temp/0vectors" + x + ".txt");
+                loadModel("ensemble.txt");
 
-                load(fileName);
+                //CombinedLETORFeatureLoader("/home/rachel/Desktop/IR/Test/src/main/java/testvectors.txt");
+                //System.out.println(Arrays.deepToString(getFeatures()));
+                // for (int dn  = 0; dn < nodocpairs+1; dn++)
+                //System.out.println(Arrays.deepToString(getFeatures()));
+                //System.out.println(feat);
 
+                double startFeature = getFeatures()[0][doc][feat];
+                double[] outscore = {0, 0};
                 applyModel(2, 64, getFeatures()[0], outscore);
 
-                threshold.put(getFeatures()[0][doc][feat], outscore[oppositeDoc]);
-                results.put(getFeatures()[0][doc][feat], outscore[doc]);
-                System.out.println("                            pass");
+
+                File output = new File("results/results_" + name + ".txt");
+                String init = ("Initial results: " + Arrays.toString(outscore));
+                double[] initscore = outscore;
+
+
+                //change this ten times.
+                for (int times = 0; times < runs; times++) {
+                    outscore[0] = 0;
+                    outscore[0] = 0;
+                    outscore[1] = 0;
+                    double replacement = gaussian(getFeatures()[0][doc][feat]);
+                    replacement = (double) Math.round(replacement * 1000000d) / 1000000d;
+                    //replacement = .805588;
+                    getFeatures()[0][doc][feat] = replacement;
+
+                    String fileName = "temp/test" + times + ".txt";
+                    PrintWriter writer = new PrintWriter(fileName);
+                    String firstLine = "";
+                    for (int a = 1; a < getFeatures()[0][0].length + 1; a++) {
+                        firstLine = firstLine + a + ":" + getFeatures()[0][0][a - 1] + " ";
+                    }
+                    String secondLine = "";
+                    for (int a = 1; a < getFeatures()[0][1].length + 1; a++) {
+                        secondLine = secondLine + a + ":" + getFeatures()[0][1][a - 1] + " ";
+                        //  System.out.println("                    !!!!!!");
+                    }
+                    writer.write("1 qid:10 " + firstLine + "#docid = G00-00-1000000\n");
+                    writer.write("0 qid:10 " + secondLine + "#docid = G00-00-0000001");
+                    writer.close();
+
+                    load(fileName);
+
+                    applyModel(2, 64, getFeatures()[0], outscore);
+
+                    threshold.put(getFeatures()[0][doc][feat], outscore[oppositeDoc]);
+                    results.put(getFeatures()[0][doc][feat], outscore[doc]);
+                    // System.out.println("                            pass");
+                }
+
+                // resultsf.write("Feature value: " + getFeatures()[0][doc][feat] + " Result : " + outscore[doc]);
+
+
+                PrintWriter writer1 = new PrintWriter(output);
+                writer1.write(init);
+                for (Map.Entry<Double, Double> e : results.entrySet()) {
+                    writer1.write("\nFeature value: " + e.getKey() + "    Result: " + e.getValue());
+                }
+                writer1.close();
+                JFreeChart chart = test("x vs y",
+                        "Example Plot", name);
+
+                offsetGraph(initscore, runs, oppositeDoc, doc, startFeature, feat);
+                JFreeChart chart2 = offsetChart(name);
+
             }
 
-            // resultsf.write("Feature value: " + getFeatures()[0][doc][feat] + " Result : " + outscore[doc]);
 
 
-            PrintWriter writer1 = new PrintWriter(output);
-            writer1.write(init);
-            for (Map.Entry<Double, Double> e : results.entrySet()) {
-                writer1.write("\nFeature value: " + e.getKey() + "    Result: " + e.getValue());
+
+
             }
-            writer1.close();
-            JFreeChart chart = test("x vs y",
-                    "Example Plot", name);
-            offsetGraph(initscore, runs, oppositeDoc, doc, startFeature);
-            JFreeChart chart2 = offsetChart(name);
+        File fr = new File("results.txt");
+        PrintWriter o = new PrintWriter(new FileWriter(fr, true));
+        Map<String, Integer> g = new LinkedHashMap<String, Integer>();
+        for (Map.Entry<Integer, String> a : changeresults.entrySet()) {
+            String v = a.getValue();
+            String[] parts = v.split(",");
+            String key = parts[0] + " " + parts[1] + " " +parts[2];
+            Integer previousValue = g.get(key);
+            if(previousValue == null) previousValue = 0;
+            g.put(key, previousValue+Integer.parseInt(parts[3]));
+
+
+
+
         }
+        System.out.println(g);
+        for (Map.Entry<String, Integer>b : g.entrySet()) {
+            String[] s = b.getKey().split(" ");
+            DecimalFormat df = new DecimalFormat("#.####");
 
+            //System.out.println(s[2]);
+            double change = (double)Math.round(Double.parseDouble(s[2]) * 100000d) / 100000d;
+            o.write(s[0] + "    " + s[1] +  "    " + b.getValue() + "    "+ change +"\n");
 
+        }
+        o.close();
         }
 
 
@@ -596,6 +678,7 @@ public class MsciProject {
     public static Map<Double, Double> threshold = new HashMap<Double, Double>();
     public static Map<Double[], String> offset = new HashMap<Double[], String>();
     public static Map<String, Integer> offsetNos = new LinkedHashMap<>();
+    public static Map<Integer, String >changeresults = new LinkedHashMap<Integer, String >();
 
 
 
@@ -650,7 +733,7 @@ public class MsciProject {
     }
 
     public static JFreeChart offsetChart(String name)throws IOException{
-        System.out.println("In");
+      //  System.out.println("In");
         JFreeChart chart1 = ChartFactory.createBarChart(
                 "offset",
                 "Category",
@@ -677,11 +760,11 @@ public class MsciProject {
     private static CategoryDataset offsetDataset( ) {
         final DefaultCategoryDataset dataset =
                 new DefaultCategoryDataset( );
-        System.out.println(offsetNos);
+      //  System.out.println(offsetNos);
 
         for (Map.Entry<String, Integer> e : offsetNos.entrySet()) {
-            System.out.println(e.getKey());
-            System.out.println(e.getValue());
+          //  System.out.println(e.getKey());
+           // System.out.println(e.getValue());
 
             dataset.addValue(e.getValue(), "test",  e.getKey());
         }
@@ -716,7 +799,7 @@ public class MsciProject {
         offsetNos.put("0.8", 0);
         offsetNos.put("0.9", 0);
         offsetNos.put("1.0", 0);
-        System.out.println(offsetNos);
+     //   System.out.println(offsetNos);
 
 
 
@@ -726,7 +809,7 @@ public class MsciProject {
         String name = reader.nextLine();
         reader.close();
         start(name);
-        System.out.println(offsetNos);
+       // System.out.println(offsetNos);
 
 
 
